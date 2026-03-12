@@ -1,5 +1,6 @@
 import { ChatGoogle } from "@langchain/google";
 import { DynamicStructuredTool, tool } from "@langchain/core/tools";
+import { ChatOpenRouter } from "@langchain/openrouter";
 import {
   task,
   entrypoint,
@@ -26,10 +27,10 @@ console.log("🔐 Elara initialized\n");
 
 // ─── Define tools and model ───
 
-const model = new ChatGoogle({
-  apiKey: process.env.GOOGLE_API_KEY || "",
-  model: "gemini-2.5-flash",
+const model = new ChatOpenRouter({
+  model: "anthropic/claude-sonnet-4.5",
   temperature: 0,
+  maxTokens: 1024
 });
 
 const add = tool(({ a, b }) => a + b, {
@@ -114,7 +115,6 @@ const agentStream = await agent.stream(
 );
 
 for await (const chunk of elara.watchAndSign(agentStream)) {
-  // Normal user code — process the stream as usual
   const data = chunk as Record<string, unknown>;
   for (const [key, value] of Object.entries(data)) {
     if (key === "__interrupt__") continue;
@@ -139,7 +139,7 @@ for (const r of results) {
   const intervention = r.proof.humanSignature ? "🧑 HUMAN+AGENT" : "🤖 AGENT ONLY";
 
   console.log(`${status} [${r.proof.type}] ${intervention}`);
-  console.log(`   Hash: ${r.proof.contentHash.slice(0, 24)}...`);
+  console.log(`   Content: ${JSON.stringify(r.proof.content).slice(0, 80)}...`);
   console.log(`   Verified: agent=${r.agentVerified} human=${humanStr}`);
   console.log("");
 }

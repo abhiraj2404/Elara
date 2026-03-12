@@ -1,0 +1,17 @@
+services: 
+  postgres:
+    image: postgres:15-alpine
+    container_name: elara-postgres
+    environment: 
+      POSTGRES_USER: elara
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: elara_db
+    ports: 
+     - "5432:5432"
+    volumes: 
+      - elara_pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  elara_pg_data:
+    name: elara_pg_data

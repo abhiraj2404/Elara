@@ -16,14 +16,12 @@ export interface ProofRecord {
   agentId: string;
   /** Unix timestamp (ms) when the proof was created */
   timestamp: number;
-  /** SHA-256 hash of the content */
-  contentHash: string;
+  /** The original content — readable in the explorer */
+  content: Record<string, unknown>;
   /** Signature from the agent's private key (base64) */
   agentSignature: string;
   /** Signature from the human's private key (base64) — only present on HITL */
   humanSignature?: string;
-  /** The original content that was hashed */
-  content: Record<string, unknown>;
 }
 
 // ─── SDK Config ───
@@ -33,6 +31,8 @@ export interface ElaraConfig {
   agentId: string;
   /** Directory to store human keys (defaults to ~/.elara/) */
   keyDir?: string;
+  /** Registry backend URL (defaults to http://localhost:3001) */
+  registryUrl?: string;
 }
 
 // ─── Key Pair ───

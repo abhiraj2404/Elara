@@ -15,9 +15,11 @@ export class ElaraVerifier {
    * Verify a single proof record.
    */
   verify(proof: ProofRecord): VerificationResult {
+    const serialized = JSON.stringify(proof.content, Object.keys(proof.content).sort());
+
     // Verify agent signature (always present)
     const agentVerified = this.verifySignature(
-      proof.contentHash,
+      serialized,
       proof.agentSignature,
       this.agentPublicKey
     );
@@ -26,13 +28,12 @@ export class ElaraVerifier {
     let humanVerified: boolean | null = null;
     if (proof.humanSignature) {
       humanVerified = this.verifySignature(
-        proof.contentHash,
+        serialized,
         proof.humanSignature,
         this.humanPublicKey
       );
     }
 
-    // Valid = agent sig checks out AND human sig checks out (if present)
     const isValid =
       agentVerified && (humanVerified === null || humanVerified === true);
 
@@ -49,13 +50,13 @@ export class ElaraVerifier {
   // ─── Private ───
 
   private verifySignature(
-    hash: string,
+    data: string,
     signature: string,
     publicKeyPem: string
   ): boolean {
     try {
       const verify = crypto.createVerify("SHA256");
-      verify.update(hash);
+      verify.update(data);
       verify.end();
       return verify.verify(publicKeyPem, signature, "base64");
     } catch {

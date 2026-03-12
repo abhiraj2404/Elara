@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id             String   @id @default(uuid())
+  agentId        String   @unique
+  agentPublicKey String
+  humanPublicKey String
+  createdAt      DateTime @default(now())
+  proofs         Proof[]
+}
+
+model Proof {
+  id             String   @id @default(uuid())
+  type           String
+  agentId        String
+  sessionId      String?
+  timestamp      DateTime
+  content        Json
+  agentSignature String
+  humanSignature String?
+  createdAt      DateTime @default(now())
+  agent          Agent    @relation(fields: [agentId], references: [agentId])
+
+  @@index([agentId])
+  @@index([sessionId])
+  @@index([agentId, sessionId])
+}

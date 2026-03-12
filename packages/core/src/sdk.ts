@@ -11,10 +11,12 @@ import type {
 } from "./types.js";
 
 const DEFAULT_KEY_DIR = path.join(os.homedir(), ".elara");
+const DEFAULT_REGISTRY_URL = "http://localhost:3001";
 
 export class ElaraSDK {
   private agentId: string;
   private keyDir: string;
+  private registryUrl: string;
   private agentKeyPair: KeyPair | null = null;
   private humanKeyPair: KeyPair | null = null;
   private proofs: ProofRecord[] = [];
@@ -23,6 +25,7 @@ export class ElaraSDK {
   constructor(config: ElaraConfig) {
     this.agentId = config.agentId;
     this.keyDir = config.keyDir ?? DEFAULT_KEY_DIR;
+    this.registryUrl = config.registryUrl ?? DEFAULT_REGISTRY_URL;
   }
 
   // ─── Initialization ───
@@ -30,24 +33,24 @@ export class ElaraSDK {
   async init(): Promise<void> {
     if (this.initialized) return;
 
-    // Ensure key directory exists
     if (!fs.existsSync(this.keyDir)) {
       fs.mkdirSync(this.keyDir, { recursive: true });
     }
 
-    // Generate or load agent keypair
     this.agentKeyPair = this.loadOrGenerateKey(
       path.join(this.keyDir, `${this.agentId}.agent.pem`),
       path.join(this.keyDir, `${this.agentId}.agent.pub.pem`)
     );
 
-    // Generate or load human keypair
     this.humanKeyPair = this.loadOrGenerateKey(
       path.join(this.keyDir, `${this.agentId}.human.pem`),
       path.join(this.keyDir, `${this.agentId}.human.pub.pem`)
     );
 
     this.initialized = true;
+
+    // Auto-register with backend (fire-and-forget — won't fail if offline)
+    await this.registerWithBackend();
   }
 
   // ─── Signing ───
@@ -61,28 +64,24 @@ export class ElaraSDK {
   ): Promise<ProofRecord> {
     this.ensureInitialized();
 
-    const contentHash = this.hash(content);
-
-    const agentSignature = this.signHash(
-      contentHash,
-      this.agentKeyPair!.privateKey
-    );
+    const serialized = this.serialize(content);
+    const agentSignature = this.signData(serialized, this.agentKeyPair!.privateKey);
 
     const proof: ProofRecord = {
       type,
       agentId: this.agentId,
       timestamp: Date.now(),
-      contentHash,
-      agentSignature,
       content,
+      agentSignature,
     };
 
     this.proofs.push(proof);
+    void this.pushProof(proof);
     return proof;
   }
 
   /**
-   * Co-sign content with BOTH agent and human keys (human intervention).
+   * Co-sign with BOTH agent and human keys (human intervention).
    */
   async coSign(
     type: ProofType,
@@ -90,29 +89,21 @@ export class ElaraSDK {
   ): Promise<ProofRecord> {
     this.ensureInitialized();
 
-    const contentHash = this.hash(content);
-
-    const agentSignature = this.signHash(
-      contentHash,
-      this.agentKeyPair!.privateKey
-    );
-
-    const humanSignature = this.signHash(
-      contentHash,
-      this.humanKeyPair!.privateKey
-    );
+    const serialized = this.serialize(content);
+    const agentSignature = this.signData(serialized, this.agentKeyPair!.privateKey);
+    const humanSignature = this.signData(serialized, this.humanKeyPair!.privateKey);
 
     const proof: ProofRecord = {
       type,
       agentId: this.agentId,
       timestamp: Date.now(),
-      contentHash,
+      content,
       agentSignature,
       humanSignature,
-      content,
     };
 
     this.proofs.push(proof);
+    void this.pushProof(proof);
     return proof;
   }
 
@@ -134,6 +125,37 @@ export class ElaraSDK {
     this.proofs = [];
   }
 
+  // ─── Backend Integration ───
+
+  private async registerWithBackend(): Promise<void> {
+    try {
+      const keys = this.getPublicKeys();
+      await fetch(`${this.registryUrl}/api/agents/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: this.agentId,
+          agentPublicKey: keys.agentPublicKey,
+          humanPublicKey: keys.humanPublicKey,
+        }),
+      });
+    } catch {
+      // Backend offline — local-only mode, silently continue
+    }
+  }
+
+  private async pushProof(proof: ProofRecord): Promise<void> {
+    try {
+      await fetch(`${this.registryUrl}/api/proofs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(proof),
+      });
+    } catch {
+      // Backend offline — proof is still stored locally
+    }
+  }
+
   // ─── Private Helpers ───
 
   private ensureInitialized(): void {
@@ -144,15 +166,13 @@ export class ElaraSDK {
     }
   }
 
-  private hash(content: Record<string, unknown>): string {
-    // Deterministic serialization: sort keys
-    const serialized = JSON.stringify(content, Object.keys(content).sort());
-    return crypto.createHash("sha256").update(serialized).digest("hex");
+  private serialize(content: Record<string, unknown>): string {
+    return JSON.stringify(content, Object.keys(content).sort());
   }
 
-  private signHash(hash: string, privateKeyPem: string): string {
+  private signData(data: string, privateKeyPem: string): string {
     const sign = crypto.createSign("SHA256");
-    sign.update(hash);
+    sign.update(data);
     sign.end();
     return sign.sign(privateKeyPem, "base64");
   }
@@ -161,7 +181,6 @@ export class ElaraSDK {
     privatePath: string,
     publicPath: string
   ): KeyPair {
-    // If keys already exist, load them
     if (fs.existsSync(privatePath) && fs.existsSync(publicPath)) {
       return {
         privateKey: fs.readFileSync(privatePath, "utf-8"),
@@ -169,14 +188,12 @@ export class ElaraSDK {
       };
     }
 
-    // Generate new ECDSA keypair
     const { publicKey, privateKey } = crypto.generateKeyPairSync("ec", {
       namedCurve: "P-256",
       publicKeyEncoding: { type: "spki", format: "pem" },
       privateKeyEncoding: { type: "pkcs8", format: "pem" },
     });
 
-    // Save to disk
     fs.writeFileSync(privatePath, privateKey, { mode: 0o600 });
     fs.writeFileSync(publicPath, publicKey);
 
