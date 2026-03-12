@@ -1,6 +1,5 @@
 import { ChatGoogle } from "@langchain/google";
 import { DynamicStructuredTool, tool } from "@langchain/core/tools";
-import { ChatOpenRouter } from "@langchain/openrouter";
 import {
   task,
   entrypoint,
@@ -14,10 +13,10 @@ import {
 import type { ToolCall } from "@langchain/core/messages/tool";
 import * as z from "zod";
 import dotenv from "dotenv";
+import * as readline from "node:readline";
 dotenv.config();
 
-// ✨ Elara — 2 imports, 3 lines of setup
-import { ElaraSDK, ElaraVerifier } from "@elara/core";
+import { ElaraSDK } from "@elara/core";
 import { Elara } from "@elara/langchain";
 
 const sdk = new ElaraSDK({ agentId: "math-agent-001" });
@@ -27,10 +26,10 @@ console.log("🔐 Elara initialized\n");
 
 // ─── Define tools and model ───
 
-const model = new ChatOpenRouter({
-  model: "anthropic/claude-sonnet-4.5",
+const model = new ChatGoogle({
+  apiKey: process.env.GOOGLE_API_KEY || "",
+  model: "gemini-2.5-flash",
   temperature: 0,
-  maxTokens: 1024
 });
 
 const add = tool(({ a, b }) => a + b, {
@@ -101,49 +100,48 @@ const agent = entrypoint({ name: "agent" }, async (messages: BaseMessage[]) => {
     modelResponse = await callLlm(messages);
   }
 
-  return messages;
+  return modelResponse.content;
 });
 
-// ─── Run with Elara watchAndSign ───
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
 
-console.log("🤖 Running agent: \"Add 3 and 4. Then multiply the result by 5.\"\n");
+function prompt(): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question("\n💬 You: ", resolve);
+  });
+}
 
-// The user streams the agent, then wraps with elara.watchAndSign()
-const agentStream = await agent.stream(
-  [new HumanMessage("Add 3 and 4. Then multiply the result by 5.")],
-  { streamMode: "updates" }
-);
+console.log("🤖 Math Agent (type 'exit' to quit)\n");
 
-for await (const chunk of elara.watchAndSign(agentStream)) {
-  const data = chunk as Record<string, unknown>;
-  for (const [key, value] of Object.entries(data)) {
-    if (key === "__interrupt__") continue;
-    console.log(`📦 [${key}]:`, JSON.stringify(value, null, 2)?.slice(0, 120));
+while (true) {
+  const input = await prompt();
+
+  if (input.trim().toLowerCase() === "exit") {
+    console.log("\n👋 Bye!");
+    rl.close();
+    process.exit(0);
   }
+
+  if (!input.trim()) continue;
+
+  const agentStream = await agent.stream(
+    [new HumanMessage(input)],
+    { streamMode: "updates" }
+  );
+
+  let answer = "";
+  for await (const chunk of elara.watchAndSign(agentStream)) {
+    const data = chunk as Record<string, unknown>;
+    for (const [key, value] of Object.entries(data)) {
+      if (key === "__interrupt__") continue;
+      if (key === "agent") {
+        answer = String(value);
+      }
+    }
+  }
+
+  console.log(`\n🤖 Agent: ${answer}`);
 }
-
-// ─── Show proof chain ───
-
-console.log("\n\n═══════════════════════════════════════════");
-console.log("  🔐 ELARA PROOF-OF-THOUGHT CHAIN");
-console.log("═══════════════════════════════════════════\n");
-
-const proofs = sdk.getProofs();
-const keys = sdk.getPublicKeys();
-const verifier = new ElaraVerifier(keys);
-const results = verifier.verifyAll(proofs);
-
-for (const r of results) {
-  const humanStr = r.humanVerified === null ? "n/a" : String(r.humanVerified);
-  const status = r.isValid ? "✅" : "❌";
-  const intervention = r.proof.humanSignature ? "🧑 HUMAN+AGENT" : "🤖 AGENT ONLY";
-
-  console.log(`${status} [${r.proof.type}] ${intervention}`);
-  console.log(`   Content: ${JSON.stringify(r.proof.content).slice(0, 80)}...`);
-  console.log(`   Verified: agent=${r.agentVerified} human=${humanStr}`);
-  console.log("");
-}
-
-const allValid = results.every((r) => r.isValid);
-console.log(`Total proofs: ${proofs.length}`);
-console.log(`All verified: ${allValid ? "✅ YES — fully autonomous execution proven" : "❌ NO"}`);
