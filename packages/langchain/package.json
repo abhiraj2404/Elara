@@ -1,0 +1,36 @@
+{
+  "name": "@elara/langchain",
+  "version": "0.1.0",
+  "description": "LangGraph integration for Elara Proof-of-Thought Protocol",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@elara/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@langchain/langgraph": ">=0.2.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@langchain/langgraph": "^0.2.0",
+    "@langchain/core": "^0.3.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.9.0"
+  },
+  "files": [
+    "dist"
+  ]
+}
