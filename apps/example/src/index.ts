@@ -19,7 +19,7 @@ dotenv.config();
 import { ElaraSDK } from "@elara/core";
 import { Elara } from "@elara/langchain";
 
-const sdk = new ElaraSDK({ agentId: "math-agent-001" });
+const sdk = new ElaraSDK({ agentId: "math-agent-001"}); // TODO: add apiKey: process.env.ELARA_API_KEY 
 await sdk.init();
 const elara = new Elara(sdk);
 console.log("🔐 Elara initialized\n");
