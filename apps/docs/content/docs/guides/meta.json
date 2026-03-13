@@ -1,0 +1,9 @@
+{
+  "title": "Guides",
+  "pages": [
+    "creating-identities",
+    "signing-actions",
+    "human-intervention",
+    "running-infrastructure"
+  ]
+}

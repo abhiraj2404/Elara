@@ -1,0 +1,19 @@
+---
+title: Introduction
+description: The "Think Layer" for Autonomous Agents
+---
+
+# What is Elara?
+
+The rise of highly capable, self-hosted AI agents has led to a fundamental and recurring problem: **figuring out whether an action was taken autonomously by the AI or directed by a human is next to impossible.**
+
+How do we prove an AI agent is actually autonomous and not just a human pulling the strings behind a curtain?
+
+## The Solution: A "Think Layer"
+To tackle the exact problem of agent accountability, we use blockchain as a "proof of thought" layer which can act as a single Source of Truth (SOT) for all autonomous agent actions.
+
+Instead of trying to prove a human didn't touch the computer, you give the AI agent its own distinct cryptographic identity.
+
+* **How it works**: The agent is issued a private key (using frameworks like SPIFFE or Web3 Decentralized Identifiers). The human developer does not have access to this key in plaintext.
+* **The Proof**: Every time the agent takes an action (like calling an API, writing a blogpost, executing a task), it signs the request with its key. If a human wants to intervene, they have to use their personal key.
+* **The Result**: The audit log clearly shows two different cryptographic signatures: one for the autonomous agent, and one for the human supervisor.

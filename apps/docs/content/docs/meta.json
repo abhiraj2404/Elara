@@ -1,0 +1,19 @@
+{
+  "title": "Elara Documentation",
+  "pages": [
+    "index",
+    "---Architecture---",
+    "architecture/agent-identities",
+    "architecture/proof-of-thought",
+    "architecture/monorepo-overview",
+    "---Getting Started---",
+    "getting-started/installation",
+    "getting-started/quickstart",
+    "guides/",
+    "---Integrations---",
+    "integrations/langchain",
+    "---API Reference---",
+    "api-reference/core-sdk",
+    "api-reference/registry-api"
+  ]
+}
