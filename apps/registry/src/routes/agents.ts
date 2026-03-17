@@ -96,6 +96,28 @@ agentsRouter.delete("/:agentId", authMiddleware, async (req: AuthRequest, res) =
   res.json({ deleted: true });
 });
 
+// ─── Validate API key (for SDK init) ───
+
+agentsRouter.get("/validate", async (req, res) => {
+  const apiKey = req.headers["x-api-key"] as string;
+  if (!apiKey) {
+    res.status(401).json({ error: "Missing x-api-key header" });
+    return;
+  }
+
+  const agent = await prisma.agent.findUnique({
+    where: { apiKey },
+    select: { agentId: true },
+  });
+
+  if (!agent) {
+    res.status(401).json({ error: "Invalid API key" });
+    return;
+  }
+
+  res.json({ agentId: agent.agentId });
+});
+
 // ─── Get agent (public — for explorer) ───
 
 agentsRouter.get("/:agentId", async (req, res) => {

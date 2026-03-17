@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ElaraVerifier } from "@elara/core";
+import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 
 export const verifyRouter: Router = Router();
@@ -10,7 +10,11 @@ export const verifyRouter: Router = Router();
 verifyRouter.get("/:proofId", async (req, res) => {
   const proof = await prisma.proof.findUnique({
     where: { id: req.params["proofId"] },
-    include: { agent: true },
+    include: {
+      agent: {
+        include: { user: { select: { humanPublicKey: true } } },
+      },
+    },
   });
 
   if (!proof) {
@@ -18,25 +22,31 @@ verifyRouter.get("/:proofId", async (req, res) => {
     return;
   }
 
-  const verifier = new ElaraVerifier({
-    agentPublicKey: proof.agent.agentPublicKey,
-    humanPublicKey: proof.agent.humanPublicKey,
-  });
+  const content = proof.content as Record<string, unknown>;
+  const serialized = JSON.stringify(content, Object.keys(content).sort());
 
-  const result = verifier.verify({
-    type: proof.type as Parameters<typeof verifier.verify>[0]["type"],
-    agentId: proof.agentId,
-    timestamp: proof.timestamp.getTime(),
-    content: proof.content as Record<string, unknown>,
-    agentSignature: proof.agentSignature,
-    humanSignature: proof.humanSignature ?? undefined,
-  });
+  const agentVerified = verifySignature(
+    serialized,
+    proof.agentSignature,
+    proof.agent.agentPublicKey
+  );
+
+  let humanVerified: boolean | null = null;
+  if (proof.humanSignature) {
+    humanVerified = verifySignature(
+      serialized,
+      proof.humanSignature,
+      proof.agent.user.humanPublicKey
+    );
+  }
+
+  const isValid = agentVerified && (humanVerified === null || humanVerified === true);
 
   res.json({
     proofId: proof.id,
-    agentVerified: result.agentVerified,
-    humanVerified: result.humanVerified,
-    isValid: result.isValid,
+    agentVerified,
+    humanVerified,
+    isValid,
     isHumanIntervention: !!proof.humanSignature,
     proof: {
       type: proof.type,
@@ -64,34 +74,50 @@ verifyRouter.post("/session", async (req, res) => {
 
   const { agentId, sessionId } = parsed.data;
 
-  const [proofs, agent] = await Promise.all([
-    prisma.proof.findMany({
-      where: { agentId, sessionId },
-      orderBy: { timestamp: "asc" },
-    }),
-    prisma.agent.findUnique({ where: { agentId } }),
-  ]);
+  const agent = await prisma.agent.findUnique({
+    where: { agentId },
+    include: { user: { select: { humanPublicKey: true } } },
+  });
 
   if (!agent) {
     res.status(404).json({ error: "Agent not found" });
     return;
   }
 
-  const verifier = new ElaraVerifier({
-    agentPublicKey: agent.agentPublicKey,
-    humanPublicKey: agent.humanPublicKey,
+  const proofs = await prisma.proof.findMany({
+    where: { agentId, sessionId },
+    orderBy: { timestamp: "asc" },
   });
 
-  const results = verifier.verifyAll(
-    proofs.map((p) => ({
-      type: p.type as Parameters<typeof verifier.verify>[0]["type"],
-      agentId: p.agentId,
-      timestamp: p.timestamp.getTime(),
-      content: p.content as Record<string, unknown>,
-      agentSignature: p.agentSignature,
-      humanSignature: p.humanSignature ?? undefined,
-    }))
-  );
+  const results = proofs.map((proof) => {
+    const content = proof.content as Record<string, unknown>;
+    const serialized = JSON.stringify(content, Object.keys(content).sort());
+
+    const agentVerified = verifySignature(
+      serialized,
+      proof.agentSignature,
+      agent.agentPublicKey
+    );
+
+    let humanVerified: boolean | null = null;
+    if (proof.humanSignature) {
+      humanVerified = verifySignature(
+        serialized,
+        proof.humanSignature,
+        agent.user.humanPublicKey
+      );
+    }
+
+    const isValid = agentVerified && (humanVerified === null || humanVerified === true);
+
+    return {
+      proofId: proof.id,
+      type: proof.type,
+      agentVerified,
+      humanVerified,
+      isValid,
+    };
+  });
 
   const allValid = results.every((r) => r.isValid);
   const hasHumanIntervention = results.some((r) => r.humanVerified !== null);
@@ -103,12 +129,19 @@ verifyRouter.post("/session", async (req, res) => {
     allValid,
     hasHumanIntervention,
     autonomous: allValid && !hasHumanIntervention,
-    results: results.map((r, i) => ({
-      proofId: proofs[i]?.id,
-      type: r.proof.type,
-      agentVerified: r.agentVerified,
-      humanVerified: r.humanVerified,
-      isValid: r.isValid,
-    })),
+    results,
   });
 });
+
+// ─── Helper ───
+
+function verifySignature(data: string, signature: string, publicKeyPem: string): boolean {
+  try {
+    const verify = crypto.createVerify("SHA256");
+    verify.update(data);
+    verify.end();
+    return verify.verify(publicKeyPem, signature, "base64");
+  } catch {
+    return false;
+  }
+}

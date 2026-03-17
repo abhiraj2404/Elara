@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Shield, Eye, Bot } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   const [agentId, setAgentId] = useState("");
@@ -31,12 +32,12 @@ export default function Home() {
       </div>
 
       {/* Search Box */}
-      <form onSubmit={handleSearch} className="mb-16 flex w-full max-w-lg gap-2">
+      <form onSubmit={handleSearch} className="mb-6 flex w-full max-w-lg gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="agent-search"
-            placeholder="Enter agent ID (e.g. math-agent-001)"
+            placeholder="Enter agent ID to explore"
             value={agentId}
             onChange={(e) => setAgentId(e.target.value)}
             className="pl-9"
@@ -47,11 +48,19 @@ export default function Home() {
         </Button>
       </form>
 
+      <p className="mb-16 text-sm text-muted-foreground">
+        Or{" "}
+        <Link href="/signup" className="underline hover:text-foreground">
+          create an account
+        </Link>{" "}
+        to start adding your own agents.
+      </p>
+
       {/* Feature Cards */}
       <div className="grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <Shield className="mb-2 h-6 w-6 text-emerald-400" />
+            <Shield className="mb-2 h-6 w-6 text-emerald-600" />
             <CardTitle className="text-sm">Cryptographic Proof</CardTitle>
           </CardHeader>
           <CardContent>
@@ -63,7 +72,7 @@ export default function Home() {
 
         <Card>
           <CardHeader className="pb-2">
-            <Bot className="mb-2 h-6 w-6 text-blue-400" />
+            <Bot className="mb-2 h-6 w-6 text-blue-600" />
             <CardTitle className="text-sm">Autonomy Detection</CardTitle>
           </CardHeader>
           <CardContent>
@@ -75,7 +84,7 @@ export default function Home() {
 
         <Card>
           <CardHeader className="pb-2">
-            <Eye className="mb-2 h-6 w-6 text-violet-400" />
+            <Eye className="mb-2 h-6 w-6 text-violet-600" />
             <CardTitle className="text-sm">Full Transparency</CardTitle>
           </CardHeader>
           <CardContent>

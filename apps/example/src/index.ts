@@ -19,10 +19,10 @@ dotenv.config();
 import { ElaraSDK } from "@elara/core";
 import { Elara } from "@elara/langchain";
 
-const sdk = new ElaraSDK({ agentId: "math-agent-001"}); // TODO: add apiKey: process.env.ELARA_API_KEY 
+const sdk = new ElaraSDK({ apiKey: process.env.ELARA_API_KEY || "" });
 await sdk.init();
 const elara = new Elara(sdk);
-console.log("🔐 Elara initialized\n");
+console.log(`🔐 Elara initialized (agent: ${sdk.getAgentId()})\n`);
 
 // ─── Define tools and model ───
 
@@ -102,6 +102,8 @@ const agent = entrypoint({ name: "agent" }, async (messages: BaseMessage[]) => {
 
   return modelResponse.content;
 });
+
+// ─── Interactive loop ───
 
 const rl = readline.createInterface({
   input: process.stdin,
