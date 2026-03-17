@@ -1,25 +1,24 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { signData, serializeContent } from "../lib/crypto.js";
+import { apiKeyMiddleware, type ApiKeyRequest } from "../middleware/auth.js";
 
-export const proofsRouter: Router = Router();
+export const proofsRouter = Router();
 
-// ─── Submit proof(s) ───
+// ─── Submit proof (API key required) ───
 
 const ProofSchema = z.object({
   type: z.string(),
-  agentId: z.string(),
-  sessionId: z.string().optional(),
   timestamp: z.number(),
   content: z.record(z.unknown()),
-  agentSignature: z.string(),
-  humanSignature: z.string().optional(),
+  sessionId: z.string().optional(),
+  needsHumanSignature: z.boolean().optional(),
 });
 
-// Accept a single proof or a batch
 const SubmitSchema = z.union([ProofSchema, z.array(ProofSchema)]);
 
-proofsRouter.post("/", async (req, res) => {
+proofsRouter.post("/", apiKeyMiddleware, async (req: ApiKeyRequest, res) => {
   const parsed = SubmitSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
@@ -27,38 +26,34 @@ proofsRouter.post("/", async (req, res) => {
   }
 
   const items = Array.isArray(parsed.data) ? parsed.data : [parsed.data];
+  const agent = req.agent!;
 
-  // Verify agent exists
-  const agentId = items[0]?.agentId;
-  if (!agentId) {
-    res.status(400).json({ error: "Missing agentId" });
-    return;
-  }
+  const proofsData = items.map((p) => {
+    const serialized = serializeContent(p.content);
+    const agentSignature = signData(serialized, agent.agentPrivateKey);
 
-  const agentExists = await prisma.agent.findUnique({ where: { agentId } });
-  if (!agentExists) {
-    res.status(404).json({
-      error: `Agent "${agentId}" not registered. Call POST /api/agents/register first.`,
-    });
-    return;
-  }
+    let humanSignature: string | null = null;
+    if (p.needsHumanSignature && req.humanPrivateKey) {
+      humanSignature = signData(serialized, req.humanPrivateKey);
+    }
 
-  const proofs = await prisma.proof.createMany({
-    data: items.map((p) => ({
+    return {
       type: p.type,
-      agentId: p.agentId,
+      agentId: agent.agentId,
       sessionId: p.sessionId ?? null,
       timestamp: new Date(p.timestamp),
       content: p.content,
-      agentSignature: p.agentSignature,
-      humanSignature: p.humanSignature ?? null,
-    })),
+      agentSignature,
+      humanSignature,
+    };
   });
 
-  res.json({ created: proofs.count });
+  const result = await prisma.proof.createMany({ data: proofsData });
+
+  res.json({ created: result.count });
 });
 
-// ─── Get proofs for an agent ───
+// ─── Get proofs for an agent (public) ───
 
 proofsRouter.get("/:agentId", async (req, res) => {
   const proofs = await prisma.proof.findMany({
@@ -69,7 +64,7 @@ proofsRouter.get("/:agentId", async (req, res) => {
   res.json({ proofs });
 });
 
-// ─── Get proofs for a specific session ───
+// ─── Get proofs for a specific session (public) ───
 
 proofsRouter.get("/:agentId/sessions/:sessionId", async (req, res) => {
   const proofs = await prisma.proof.findMany({

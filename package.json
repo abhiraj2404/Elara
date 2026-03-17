@@ -10,6 +10,7 @@
     "start": "turbo run start",
     "dev:explorer": "pnpm --filter explorer dev",
     "dev:registry": "pnpm --filter registry dev",
+    "dev:docs": "pnpm --filter docs dev",
     "dev:example": "pnpm --filter example dev",
     "infra:up": "docker-compose -f docker/docker-compose.yml up -d",
     "infra:down": "docker-compose -f docker/docker-compose.yml down",

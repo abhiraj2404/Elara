@@ -7,13 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  password        String
+  name            String?
+  humanPublicKey  String
+  humanPrivateKey String
+  createdAt       DateTime @default(now())
+  agents          Agent[]
+}
+
 model Agent {
-  id             String   @id @default(uuid())
-  agentId        String   @unique
-  agentPublicKey String
-  humanPublicKey String
-  createdAt      DateTime @default(now())
-  proofs         Proof[]
+  id              String   @id @default(uuid())
+  agentId         String   @unique
+  apiKey          String   @unique
+  agentPublicKey  String
+  agentPrivateKey String
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  proofs          Proof[]
 }
 
 model Proof {
