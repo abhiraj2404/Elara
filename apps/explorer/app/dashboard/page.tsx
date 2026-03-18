@@ -174,7 +174,7 @@ export default function DashboardPage() {
             localStorage.removeItem("elara_token");
             router.push("/login");
           }}
-          className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors"
+          className="bg-[#39FF14] text-black px-5 py-2 rounded font-bold text-sm hover:scale-[1.02] transition-transform shadow-[0_0_12px_rgba(57,255,20,0.35)]"
         >
           Log out
         </button>
