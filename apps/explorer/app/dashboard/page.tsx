@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Plus, Copy, Trash2, Bot, Key, Eye, EyeOff, Hexagon } from "lucide-react";
 
 interface Agent {
@@ -142,6 +143,10 @@ export default function DashboardPage() {
     }
   };
 
+  const agentViewHandler = (agentId: string) => {
+    router.push(`/agent/${agentId}`);
+  }
+
   const copyApiKey = (apiKey: string) => {
     navigator.clipboard.writeText(apiKey);
     toast.success("API key copied!");
@@ -163,12 +168,30 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-white">
       {/* Top Bar */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-6 lg:px-20 py-4 border-b border-black/5 bg-white/80 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <div className="size-8 bg-[#39FF14] flex items-center justify-center rounded">
-            <Hexagon className="size-5 text-black" strokeWidth={2.5} />
+        <div className="flex items-center gap-10">
+          <div className="flex items-center gap-2">
+            <div className="size-8 bg-[#39FF14] flex items-center justify-center rounded">
+              <Hexagon className="size-5 text-black" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight text-[#121212]">Elara</h2>
           </div>
-          <h2 className="text-xl font-bold tracking-tight text-[#121212]">Elara</h2>
+
+          <nav className="hidden md:flex items-center gap-10">
+            <Link
+              className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors"
+              href={process.env.EXPLORER_URL || "https://localhost:3000"}
+            >
+              Explorer
+            </Link>
+            <Link
+              className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors"
+              href={process.env.NEXT_PUBLIC_DOCS_URL || "http://localhost:5000"}
+            >
+              Docs
+            </Link>
+          </nav>
         </div>
+
         <button
           onClick={() => {
             localStorage.removeItem("elara_token");
@@ -284,7 +307,7 @@ export default function DashboardPage() {
               </TableHeader>
               <TableBody>
                 {agents.map((agent) => (
-                  <TableRow key={agent.id} className="border-b border-black/5 hover:bg-slate-50/50 transition-colors">
+                  <TableRow key={agent.id} className="border-b border-black/5 hover:bg-slate-50/50 transition-colors" onClick={() =>agentViewHandler(agent.agentId)}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Bot className="h-4 w-4 text-[#39FF14]" />

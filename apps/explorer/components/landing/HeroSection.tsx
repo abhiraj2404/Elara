@@ -10,6 +10,10 @@ export function HeroSection() {
   const [agentId, setAgentId] = useState("");
   const router = useRouter();
 
+  const viewDocsHandler = () => {
+    router.push(process.env.NEXT_PUBLIC_DOCS_URL ||" http://localhost:5000");
+  }
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (agentId.trim()) {
@@ -51,7 +55,7 @@ export function HeroSection() {
           <button className="bg-[#39FF14] text-black px-8 py-4 rounded font-bold hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(57,255,20,0.4)]">
             Get Started
           </button>
-          <button className="border border-black/10 hover:bg-black/5 text-[#121212] px-8 py-4 rounded font-bold transition-colors">
+          <button className="border border-black/10 hover:bg-black/5 text-[#121212] px-8 py-4 rounded font-bold transition-colors" onClick={viewDocsHandler}>
             View Documentation
           </button>
         </motion.div>

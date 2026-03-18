@@ -21,7 +21,10 @@ export function Navbar() {
         <Link className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors" href="#">
           Ecosystem
         </Link>
-        <Link className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors" href="/docs">
+        <Link
+          className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors"
+          href={process.env.NEXT_PUBLIC_DOCS_URL || "http://localhost:5000"}
+        >
           Docs
         </Link>
       </nav>
