@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
+const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "Elara — Proof-of-Thought Protocol",
+  title: "Elara | Proof-of-Thought Protocol",
   description:
-    "Verify AI agent autonomy with cryptographic proof chains.",
+    "The first Proof-of-Thought protocol enabling verifiable reasoning and deterministic integrity for autonomous entities.",
 };
 
 export default function RootLayout({
@@ -19,27 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable, geistMono.variable)}>
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        {/* Header */}
-        <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg">
-          <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-            <a href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-              <span className="text-lg">🔐</span>
-              <span>Elara</span>
-            </a>
-            <nav className="flex items-center gap-4 text-sm">
-              <a href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-                Dashboard
-              </a>
-              <a href="/login" className="text-muted-foreground hover:text-foreground transition-colors">
-                Login
-              </a>
-            </nav>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+    <html lang="en" className={cn(geist.variable, geistMono.variable, spaceGrotesk.variable)}>
+      <body className="min-h-screen bg-white antialiased overflow-x-hidden">
+        {children}
         <Toaster />
       </body>
     </html>
