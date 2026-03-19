@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Dialog,
   DialogContent,
@@ -24,7 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Bot, Key, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { Plus, Copy, Trash2, Bot, Key, Eye, EyeOff, Hexagon } from "lucide-react";
 
 interface Agent {
   id: string;
@@ -47,6 +47,7 @@ export default function DashboardPage() {
 
   const fetchAgents = async () => {
     const token = getToken();
+   
     if (!token) {
       router.push("/login");
       return;
@@ -57,6 +58,7 @@ export default function DashboardPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+     
       if (res.status === 401) {
         localStorage.removeItem("elara_token");
         router.push("/login");
@@ -72,9 +74,13 @@ export default function DashboardPage() {
     }
   };
 
+
   useEffect(() => {
     fetchAgents();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setLoading(false);
+  }, []);
 
   const handleCreateAgent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +143,10 @@ export default function DashboardPage() {
     }
   };
 
+  const agentViewHandler = (agentId: string) => {
+    router.push(`/agent/${agentId}`);
+  }
+
   const copyApiKey = (apiKey: string) => {
     navigator.clipboard.writeText(apiKey);
     toast.success("API key copied!");
@@ -148,180 +158,223 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center pt-32">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="flex items-center justify-center pt-32 min-h-screen bg-white">
+        <p className="text-slate-500 font-medium">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your agents and API keys.
-          </p>
+    <div className="min-h-screen bg-white">
+      {/* Top Bar */}
+      <header className="sticky top-0 z-50 flex items-center justify-between px-6 lg:px-20 py-4 border-b border-black/5 bg-white/80 backdrop-blur-md">
+        <div className="flex items-center gap-10">
+          <div className="flex items-center gap-2">
+            <div className="size-8 bg-[#39FF14] flex items-center justify-center rounded">
+              <Hexagon className="size-5 text-black" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight text-[#121212]">Elara</h2>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-10">
+            <Link
+              className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors"
+              href={process.env.EXPLORER_URL || "https://localhost:3000"}
+            >
+              Explorer
+            </Link>
+            <Link
+              className="text-sm font-medium text-slate-500 hover:text-[#121212] transition-colors"
+              href={process.env.NEXT_PUBLIC_DOCS_URL || "http://localhost:5000"}
+            >
+              Docs
+            </Link>
+          </nav>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Add Agent
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create a new agent</DialogTitle>
-              <DialogDescription>
-                Give your agent a name. We&apos;ll generate keypairs and an API key for you.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateAgent} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="agent-name">Agent Name</Label>
-                <Input
-                  id="agent-name"
-                  placeholder="e.g. math-agent"
-                  value={agentName}
-                  onChange={(e) => setAgentName(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={creating}>
-                {creating ? "Creating..." : "Create Agent"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem("elara_token");
+            router.push("/login");
+          }}
+          className="bg-[#39FF14] text-black px-5 py-2 rounded font-bold text-sm hover:scale-[1.02] transition-transform shadow-[0_0_12px_rgba(57,255,20,0.35)]"
+        >
+          Log out
+        </button>
+      </header>
 
-      {/* Stats */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-1 pt-4">
-            <CardTitle className="text-xs text-muted-foreground">Total Agents</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <p className="text-2xl font-bold">{agents.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-4">
-            <CardTitle className="text-xs text-muted-foreground">Total Proofs</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <p className="text-2xl font-bold">
+      <div className="px-6 lg:px-20 py-10 max-w-7xl mx-auto">
+        {/* Page Header */}
+        <div className="mb-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#121212]">
+              Dashboard
+            </h1>
+            <p className="text-slate-500 text-sm mt-1">
+              Manage your agents and API keys.
+            </p>
+          </div>
+
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <button className="bg-[#39FF14] text-black px-6 py-3 rounded font-bold hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(57,255,20,0.4)] inline-flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Add Agent
+              </button>
+            </DialogTrigger>
+            <DialogContent className="bg-white border border-black/5 shadow-xl">
+              <DialogHeader>
+                <DialogTitle className="text-[#121212] font-bold tracking-tight">Create a new agent</DialogTitle>
+                <DialogDescription className="text-slate-500">
+                  Give your agent a name. We&apos;ll generate keypairs and an API key for you.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateAgent} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="agent-name" className="text-[#121212] font-medium">Agent Name</Label>
+                  <Input
+                    id="agent-name"
+                    placeholder="e.g. math-agent"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    required
+                    className="border-black/10 focus:border-[#39FF14] focus:ring-[#39FF14]/30"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-[#39FF14] text-black py-3 rounded font-bold hover:scale-[1.01] transition-transform shadow-[0_0_10px_rgba(57,255,20,0.3)] disabled:opacity-50 disabled:hover:scale-100"
+                  disabled={creating}
+                >
+                  {creating ? "Creating..." : "Create Agent"}
+                </button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Stats */}
+        <div className="mb-10 grid grid-cols-2 gap-6 sm:grid-cols-3">
+          <div className="bg-slate-50 border border-black/5 rounded p-6">
+            <p className="text-[#121212] text-xs uppercase tracking-[0.3em] font-bold mb-2">
+              Total Agents
+            </p>
+            <p className="text-3xl font-bold text-[#121212]">{agents.length}</p>
+          </div>
+          <div className="bg-slate-50 border border-black/5 rounded p-6">
+            <p className="text-[#121212] text-xs uppercase tracking-[0.3em] font-bold mb-2">
+              Total Proofs
+            </p>
+            <p className="text-3xl font-bold text-[#121212]">
               {agents.reduce((sum, a) => sum + a._count.proofs, 0)}
             </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-4">
-            <CardTitle className="text-xs text-muted-foreground">API Keys</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <p className="text-2xl font-bold">{agents.length}</p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <div className="bg-slate-50 border border-black/5 rounded p-6">
+            <p className="text-[#121212] text-xs uppercase tracking-[0.3em] font-bold mb-2">
+              API Keys
+            </p>
+            <p className="text-3xl font-bold text-[#121212]">{agents.length}</p>
+          </div>
+        </div>
 
-      {/* Agents Table */}
-      {agents.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Bot className="mb-4 h-12 w-12 text-muted-foreground/50" />
-            <p className="mb-2 text-lg font-medium">No agents yet</p>
-            <p className="mb-4 text-sm text-muted-foreground">
+        {/* Agents Table */}
+        {agents.length === 0 ? (
+          <div className="bg-slate-50 border border-black/5 rounded flex flex-col items-center justify-center py-20">
+            <div className="size-14 bg-[#39FF14]/20 rounded-full flex items-center justify-center mb-5">
+              <Bot className="h-7 w-7 text-[#121212]" />
+            </div>
+            <p className="mb-2 text-lg font-bold text-[#121212]">No agents yet</p>
+            <p className="mb-6 text-sm text-slate-500">
               Create your first agent to get an API key.
             </p>
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Agent
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Agent ID</TableHead>
-                <TableHead>API Key</TableHead>
-                <TableHead>Proofs</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agents.map((agent) => (
-                <TableRow key={agent.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-mono text-sm">{agent.agentId}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <code className="rounded bg-muted px-2 py-0.5 text-xs font-mono">
-                        {visibleKeys[agent.agentId]
-                          ? agent.apiKey
-                          : `${agent.apiKey.slice(0, 8)}${"•".repeat(20)}`}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => toggleKeyVisibility(agent.agentId)}
-                      >
-                        {visibleKeys[agent.agentId] ? (
-                          <EyeOff className="h-3 w-3" />
-                        ) : (
-                          <Eye className="h-3 w-3" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => copyApiKey(agent.apiKey)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{agent._count.proofs}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(agent.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteAgent(agent.agentId)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+            <button
+              onClick={() => setDialogOpen(true)}
+              className="bg-[#39FF14] text-black px-6 py-3 rounded font-bold hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(57,255,20,0.4)] inline-flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" /> Add Agent
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white border border-black/5 rounded overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 border-b border-black/5 hover:bg-slate-50">
+                  <TableHead className="text-[#121212] text-xs uppercase tracking-[0.2em] font-bold">Agent ID</TableHead>
+                  <TableHead className="text-[#121212] text-xs uppercase tracking-[0.2em] font-bold">API Key</TableHead>
+                  <TableHead className="text-[#121212] text-xs uppercase tracking-[0.2em] font-bold">Proofs</TableHead>
+                  <TableHead className="text-[#121212] text-xs uppercase tracking-[0.2em] font-bold">Created</TableHead>
+                  <TableHead className="text-right text-[#121212] text-xs uppercase tracking-[0.2em] font-bold">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
+              </TableHeader>
+              <TableBody>
+                {agents.map((agent) => (
+                  <TableRow key={agent.id} className="border-b border-black/5 hover:bg-slate-50/50 transition-colors" onClick={() =>agentViewHandler(agent.agentId)}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Bot className="h-4 w-4 text-[#39FF14]" />
+                        <span className="font-mono text-sm font-bold text-[#121212]">{agent.agentId}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <code className="rounded bg-slate-50 border border-black/5 px-2 py-0.5 text-xs font-mono text-[#121212]">
+                          {visibleKeys[agent.agentId]
+                            ? agent.apiKey
+                            : `${agent.apiKey.slice(0, 8)}${"•".repeat(20)}`}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-slate-500 hover:text-[#121212]"
+                          onClick={() => toggleKeyVisibility(agent.agentId)}
+                        >
+                          {visibleKeys[agent.agentId] ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-slate-500 hover:text-[#121212]"
+                          onClick={() => copyApiKey(agent.apiKey)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[10px] font-mono text-[#121212] bg-[#39FF14]/20 px-2 py-1 rounded font-bold">
+                        {agent._count.proofs}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      {new Date(agent.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        onClick={() => handleDeleteAgent(agent.agentId)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
-      {/* Usage Guide */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Key className="h-4 w-4" /> Quick Start
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm font-mono">
+        {/* Quick Start */}
+        <div className="mt-10 bg-[#121212] rounded overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10 flex items-center gap-2">
+            <Key className="h-4 w-4 text-[#39FF14]" />
+            <span className="text-sm font-bold text-white tracking-tight">Quick Start</span>
+          </div>
+          <pre className="overflow-x-auto p-6 text-sm font-mono text-[#39FF14]/90 leading-relaxed">
 {`import { ElaraSDK } from "@elara/core";
 import { Elara } from "@elara/langchain";
 
@@ -334,8 +387,8 @@ for await (const chunk of elara.watchAndSign(agentStream)) {
   // process chunks — proofs are signed & stored automatically
 }`}
           </pre>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
